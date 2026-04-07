@@ -72,9 +72,15 @@ class BluetoothService {
       _scanSub?.cancel();
 
       _scanSub = FlutterBluePlus.scanResults.listen((res) {
-        results
-          ..clear()
-          ..addAll(res);
+        results.clear();
+
+        for (final r in res) {
+          final name = r.device.name;
+
+          if (name.isNotEmpty && name.startsWith("EchoMesh")) {
+            results.add(r);
+          }
+        }
       });
     } catch (e) {
       print("SCAN ERROR: $e");

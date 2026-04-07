@@ -3,6 +3,7 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:meslo/presentation/screens/chat_screen.dart';
 import 'package:meslo/presentation/screens/name_screen.dart';
 import 'package:meslo/services/background_service.dart';
+import 'package:meslo/services/ble_manager.dart';
 import 'services/user_service.dart';
 import 'models/user_model.dart';
 
@@ -10,6 +11,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final user = await UserService().getUser();
+  final ble = BleManager().service;
+
+  ble.deviceId =
+  "EchoMesh_${DateTime.now().millisecondsSinceEpoch}";
 
   runApp(MyApp(user: user));
 }
