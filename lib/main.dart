@@ -23,12 +23,19 @@ Future<void> initForegroundTask() async {
       channelImportance: NotificationChannelImportance.LOW,
       priority: NotificationPriority.LOW,
     ),
+
+    // ✅ REQUIRED (even if unused)
+    iosNotificationOptions: const IOSNotificationOptions(
+      showNotification: false,
+      playSound: false,
+    ),
+
     foregroundTaskOptions: const ForegroundTaskOptions(
-      interval: 5000, // 5 sec loop
+      interval: 5000,
       autoRunOnBoot: false,
       allowWakeLock: true,
       allowWifiLock: true,
-    ), iosNotificationOptions: null,
+    ),
   );
 }
 
