@@ -14,6 +14,8 @@ class _NameScreenState extends State<NameScreen> {
   final usernameController = TextEditingController();
 
   void createUser() async {
+    if (nameController.text.isEmpty) return;
+
     final user = UserModel(
       userId: DateTime.now().millisecondsSinceEpoch.toString() +
           Random().nextInt(9999).toString(),
@@ -34,25 +36,47 @@ class _NameScreenState extends State<NameScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Setup Profile")),
-      body: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: InputDecoration(labelText: "Name"),
-            ),
-            TextField(
-              controller: usernameController,
-              decoration: InputDecoration(labelText: "Username (@optional)"),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: createUser,
-              child: Text("Continue"),
-            ),
-          ],
+      backgroundColor: Colors.black,
+      body: Center(
+        child: Container(
+          padding: EdgeInsets.all(20),
+          margin: EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Welcome to EchoMesh",
+                style: TextStyle(fontSize: 20, color: Colors.white),
+              ),
+              SizedBox(height: 20),
+              TextField(
+                controller: nameController,
+                style: TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: "Your Name",
+                  hintStyle: TextStyle(color: Colors.grey),
+                ),
+              ),
+              SizedBox(height: 10),
+              TextField(
+                controller: usernameController,
+                style: TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: "@username (optional)",
+                  hintStyle: TextStyle(color: Colors.grey),
+                ),
+              ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: createUser,
+                child: Text("Continue"),
+              ),
+            ],
+          ),
         ),
       ),
     );
