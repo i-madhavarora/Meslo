@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../../data/models/message.dart';
 import '../../data/repositories/message_repository.dart';
 import '../../models/user_model.dart';
+import '../../services/ble_manager.dart';
 import '../../services/user_service.dart';
 import '../../services/bluetooth_service.dart';
 
@@ -17,7 +18,7 @@ class _ChatState extends State<ChatScreen> {
   final repo = MessageRepository();
   final controller = TextEditingController();
   final uuid = const Uuid();
-  final BluetoothService ble = BluetoothService(); // IMPORTANT: ideally pass from previous screen later
+  final ble = BleManager().service; // IMPORTANT: ideally pass from previous screen later
 
   Future<void> sendMessage() async {
     final user = await UserService().getUser();
