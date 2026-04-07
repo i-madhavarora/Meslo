@@ -19,11 +19,15 @@ class Message extends HiveObject {
   @HiveField(4)
   DateTime timestamp;
 
+  @HiveField(5)
+  String senderName;
+
   Message({
     required this.id,
     required this.text,
     required this.senderId,
     required this.receiverId,
     required this.timestamp,
+    required this.senderName,
   });
 }

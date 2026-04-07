@@ -1,20 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:firebase_core/firebase_core.dart';
-
-import 'app.dart';
-import 'firebase_options.dart';
-import 'services/hive_service.dart';
+import 'package:meslo/presentation/screens/chat_screen.dart';
+import 'package:meslo/presentation/screens/name_screen.dart';
+import 'services/user_service.dart';
+import 'models/user_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  final user = await UserService().getUser();
 
-  await Hive.initFlutter();
-  await HiveService.init();
+  runApp(MyApp(user: user));
+}
 
-  runApp(const EchoMeshApp());
+class MyApp extends StatelessWidget {
+  final UserModel? user;
+
+  const MyApp({super.key, required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: user == null ? NameScreen() : ChatScreen(),
+    );
+  }
 }
