@@ -3,6 +3,8 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class BluetoothService {
   final List<ScanResult> results = [];
+  String deviceId = "";
+  String? remoteDeviceId;
 
   BluetoothDevice? connectedDevice;
   BluetoothCharacteristic? txCharacteristic;
@@ -13,6 +15,10 @@ class BluetoothService {
 
   bool isScanning = false;
   bool isConnected = false;
+
+  Future<void> sendHandshake() async {
+    await sendMessage("HELLO", "INIT");
+  }
 
   // ---------------- SCAN ----------------
   Future<void> startScan() async {
@@ -97,7 +103,29 @@ class BluetoothService {
             await characteristic.setNotifyValue(true);
 
             characteristic.lastValueStream.listen((value) {
-              print("RECEIVED: $value");
+              final msg = String.fromCharCodes(value);
+              final parts = msg.split("|");
+
+              if (parts.length < 3) return;
+
+              final type = parts[0];
+              final sender = parts[1];
+              final data = parts.sublist(2).join("|");
+
+              switch (type) {
+                case "HELLO":
+                  remoteDeviceId = sender;
+                  print("Handshake from $sender");
+                  break;
+
+                case "CHAT":
+                  print("Message from $sender: $data");
+                  break;
+
+                case "PAIR":
+                  print("Pair request: $data");
+                  break;
+              }
             });
           }
         }
@@ -122,9 +150,10 @@ class BluetoothService {
   }
 
   // ---------------- SEND MESSAGE ----------------
-  Future<void> sendMessage(String msg) async {
+  Future<void> sendMessage(String type, String data) async {
     if (txCharacteristic == null) return;
 
+    final msg = "$type|$deviceId|$data";
     await txCharacteristic!.write(msg.codeUnits);
   }
 }
