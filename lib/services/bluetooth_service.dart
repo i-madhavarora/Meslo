@@ -25,6 +25,18 @@ class BluetoothService {
   static const String PAIR_ACCEPT = "PAIR_ACCEPT";
   static const String CHAT = "CHAT";
 
+  Future<void> autoReconnect() async {
+    if (connectedDevice != null && !isConnected) {
+      try {
+        await connectedDevice!.connect();
+        await _discoverServices();
+        await sendHandshake();
+      } catch (e) {
+        print("Reconnect failed");
+      }
+    }
+  }
+
   Future<void> sendPairRequest(String targetId) async {
     await sendMessage("PAIR_REQUEST", targetId);
   }

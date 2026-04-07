@@ -50,7 +50,34 @@ class _ChatState extends State<ChatScreen> {
         repo.sendMessage(incoming);
       }
     });
+
+    ble.onPairRequest = (sender) {
+      showDialog(
+        context: context,
+        builder: (_) =>
+            AlertDialog(
+              title: const Text("Pair Request"),
+              content: Text("Connect with $sender ?"),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Reject"),
+                ),
+                TextButton(
+                  onPressed: () {
+                    ble.acceptPair(sender);
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Accept"),
+                ),
+              ],
+            ),
+      );
+    };
   }
+
 
   Future<void> sendMessage() async {
     final user = await UserService().getUser();
