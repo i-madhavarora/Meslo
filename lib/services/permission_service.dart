@@ -2,16 +2,20 @@ import 'package:permission_handler/permission_handler.dart';
 
 class PermissionService {
   static Future<bool> request() async {
-    await [
+    final statuses = await [
       Permission.bluetooth,
       Permission.bluetoothScan,
       Permission.bluetoothConnect,
-      Permission.microphone,
+      Permission.bluetoothAdvertise,
       Permission.location,
+      Permission.microphone,
     ].request();
 
-    return await Permission.bluetoothScan.isGranted &&
-        await Permission.bluetoothConnect.isGranted &&
-        await Permission.location.isGranted;
+    final bluetoothScan = statuses[Permission.bluetoothScan]?.isGranted ?? false;
+    final bluetoothConnect = statuses[Permission.bluetoothConnect]?.isGranted ?? false;
+    final location = statuses[Permission.location]?.isGranted ?? false;
+    final advertise = statuses[Permission.bluetoothAdvertise]?.isGranted ?? false;
+
+    return bluetoothScan && bluetoothConnect && location && advertise;
   }
 }
