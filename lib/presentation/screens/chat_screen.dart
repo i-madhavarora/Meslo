@@ -4,6 +4,7 @@ import '../../data/models/message.dart';
 import '../../data/repositories/message_repository.dart';
 import '../../models/user_model.dart';
 import '../../services/user_service.dart';
+import '../../services/bluetooth_service.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -16,22 +17,30 @@ class _ChatState extends State<ChatScreen> {
   final repo = MessageRepository();
   final controller = TextEditingController();
   final uuid = const Uuid();
+  final BluetoothService ble = BluetoothService(); // IMPORTANT: ideally pass from previous screen later
 
   Future<void> sendMessage() async {
     final user = await UserService().getUser();
+    if (user == null) return;
 
-    if (user == null) return; // or handle properly
+    final text = controller.text.trim();
+    if (text.isEmpty) return;
 
+    // 1. Save locally (Hive)
     final msg = Message(
       id: uuid.v4(),
-      text: controller.text,
-      senderId: user.userId, // ❌ not "me"
-      receiverId: "user", // (temporary for now)
+      text: text,
+      senderId: user.userId,
+      receiverId: ble.remoteDeviceId ?? "unknown",
       timestamp: DateTime.now(),
       senderName: user.name,
     );
 
     repo.sendMessage(msg);
+
+    // 2. SEND VIA BLE (NEW)
+    await ble.sendChat(text);
+
     controller.clear();
     setState(() {});
   }
@@ -42,6 +51,33 @@ class _ChatState extends State<ChatScreen> {
   void initState() {
     super.initState();
     loadUser();
+
+    // Listen for BLE messages
+    ble.rxCharacteristic?.lastValueStream.listen((value) {
+      final msg = String.fromCharCodes(value);
+
+      final parts = msg.split("|");
+      if (parts.length < 3) return;
+
+      final type = parts[0];
+      final sender = parts[1];
+      final data = parts.sublist(2).join("|");
+
+      if (type == "CHAT") {
+        final incoming = Message(
+          id: uuid.v4(),
+          text: data,
+          senderId: sender,
+          receiverId: "me",
+          timestamp: DateTime.now(),
+          senderName: sender,
+        );
+
+        repo.sendMessage(incoming);
+
+        setState(() {});
+      }
+    });
   }
 
   void loadUser() async {
