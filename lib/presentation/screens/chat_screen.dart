@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:meslo/main.dart';
 import 'package:uuid/uuid.dart';
 import '../../data/models/message.dart';
 import '../../data/repositories/message_repository.dart';
@@ -25,6 +26,10 @@ class _ChatState extends State<ChatScreen> {
   void initState() {
     super.initState();
     loadUser();
+
+    startBackgroundService();
+
+    // for logout :- FlutterForegroundTask.stopService();
 
     // ✅ Pair request UI
     ble.onPairRequest = (sender) {
