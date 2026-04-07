@@ -14,12 +14,12 @@ class BluetoothTransport {
 
   // 🔍 SCAN
   Stream<List<ScanResult>> scan() async* {
-    await _ble.startScan(timeout: const Duration(seconds: 5));
+    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 5));
 
-    yield* _ble.scanResults;
+    yield* FlutterBluePlus.scanResults;
 
     await Future.delayed(const Duration(seconds: 5));
-    _ble.stopScan();
+    FlutterBluePlus.stopScan();
   }
 
   // 🔗 CONNECT
