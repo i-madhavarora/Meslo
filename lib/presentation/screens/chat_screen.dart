@@ -110,8 +110,13 @@ class _ChatState extends State<ChatScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: Text("EchoMesh"),
-        backgroundColor: Colors.black,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        title: const Text(
+          "EchoMesh",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
       ),
         body: Container(
         decoration: const BoxDecoration(
