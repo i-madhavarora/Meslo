@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-import 'package:meslo/presentation/screens/chat_screen.dart';
+import 'package:meslo/presentation/screens/scan_screen.dart';
 import 'package:meslo/presentation/screens/name_screen.dart';
 import 'package:meslo/services/background_service.dart';
 import 'package:meslo/services/ble_manager.dart';
@@ -65,7 +65,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: user == null ? NameScreen() : ChatScreen(),
+      home: user == null ? NameScreen() : ScanScreen(),
     );
   }
 }
