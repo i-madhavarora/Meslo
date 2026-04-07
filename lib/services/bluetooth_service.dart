@@ -16,6 +16,25 @@ class BluetoothService {
   bool isScanning = false;
   bool isConnected = false;
 
+  String? sessionId;
+  bool isPaired = false;
+
+  static const String HELLO = "HELLO";
+  static const String PAIR_REQUEST = "PAIR_REQUEST";
+  static const String PAIR_ACCEPT = "PAIR_ACCEPT";
+  static const String CHAT = "CHAT";
+
+  Future<void> sendPairRequest(String targetId) async {
+    await sendMessage("PAIR_REQUEST", targetId);
+  }
+
+  Future<void> acceptPair(String targetId) async {
+    sessionId = "${deviceId}_$targetId";
+    isPaired = true;
+
+    await sendMessage("PAIR_ACCEPT", sessionId!);
+  }
+
   Future<void> sendHandshake() async {
     await sendMessage("HELLO", "INIT");
   }
@@ -116,15 +135,27 @@ class BluetoothService {
               switch (type) {
                 case "HELLO":
                   remoteDeviceId = sender;
-                  print("Handshake from $sender");
+                  print("HELLO from $sender");
+                  break;
+
+                case "PAIR_REQUEST":
+                  remoteDeviceId = sender;
+                  print("PAIR REQUEST from $sender");
+
+                  // auto-accept for now (we can add UI later)
+                  acceptPair(sender);
+                  break;
+
+                case "PAIR_ACCEPT":
+                  sessionId = data;
+                  isPaired = true;
+                  print("PAIRED with session: $sessionId");
                   break;
 
                 case "CHAT":
-                  print("Message from $sender: $data");
-                  break;
-
-                case "PAIR":
-                  print("Pair request: $data");
+                  if (isPaired) {
+                    print("CHAT from $sender: $data");
+                  }
                   break;
               }
             });
@@ -134,6 +165,15 @@ class BluetoothService {
     } catch (e) {
       print("SERVICE DISCOVERY ERROR: $e");
     }
+  }
+
+  Future<void> sendChat(String msg) async {
+    if (!isPaired) {
+      print("Not paired yet!");
+      return;
+    }
+
+    await sendMessage("CHAT", msg);
   }
 
   // ---------------- DISCONNECT ----------------
