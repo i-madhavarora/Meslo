@@ -58,6 +58,51 @@ class _ChatState extends State<ChatScreen> {
     return "$hour:$minute $period";
   }
 
+  Widget messageBubble(Message message, bool isMe) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: isMe
+            ? const LinearGradient(colors: [Color(0xFF4facfe), Color(0xFF00f2fe)])
+            : LinearGradient(colors: [Colors.grey.shade800, Colors.grey.shade700]),
+        borderRadius: BorderRadius.only(
+          topLeft: const Radius.circular(18),
+          topRight: const Radius.circular(18),
+          bottomLeft: isMe ? const Radius.circular(18) : const Radius.circular(0),
+          bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(18),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            message.senderName,
+            style: const TextStyle(fontSize: 11, color: Colors.white70),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            message.text,
+            style: const TextStyle(color: Colors.white, fontSize: 15),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                formatTime(message.timestamp),
+                style: const TextStyle(fontSize: 10, color: Colors.white70),
+              ),
+              const SizedBox(width: 4),
+              if (isMe)
+                const Icon(Icons.done_all, size: 14, color: Colors.lightBlueAccent),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final messages = repo.getLocalMessages();
@@ -68,7 +113,15 @@ class _ChatState extends State<ChatScreen> {
         title: Text("EchoMesh"),
         backgroundColor: Colors.black,
       ),
-      body: Column(
+        body: Container(
+        decoration: const BoxDecoration(
+        gradient: LinearGradient(
+        colors: [Color(0xFF0f2027), Color(0xFF203a43), Color(0xFF2c5364)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        ),
+        ),
+        child: Column(
         children: [
           Expanded(
             child: ListView.builder(
@@ -77,59 +130,18 @@ class _ChatState extends State<ChatScreen> {
                 final message = messages[index];
                 final isMe = message.senderId == currentUser?.userId;
 
-                return Align(
-                  alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: EdgeInsets.symmetric(vertical: 6, horizontal: 10),
-                    padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      gradient: isMe
-                          ? LinearGradient(colors: [Colors.blue, Colors.blueAccent])
-                          : LinearGradient(colors: [Colors.grey.shade800, Colors.grey.shade700]),
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(18),
-                        topRight: Radius.circular(18),
-                        bottomLeft: isMe ? Radius.circular(18) : Radius.circular(0),
-                        bottomRight: isMe ? Radius.circular(0) : Radius.circular(18),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          message.senderName,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.white70,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          message.text,
-                          style: TextStyle(color: Colors.white, fontSize: 15),
-                        ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Text(
-                              formatTime(message.timestamp),
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.white70,
-                              ),
-                            ),
-                            SizedBox(width: 4),
-
-                            if (isMe)
-                              Icon(
-                                Icons.done_all,
-                                size: 14,
-                                color: isMe ? Colors.lightBlueAccent : Colors.white70,
-                              ),
-                          ],
-                        )
-                      ],
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  child: Align(
+                    alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                    child: TweenAnimationBuilder(
+                      tween: Tween<double>(begin: 0.8, end: 1),
+                      duration: const Duration(milliseconds: 200),
+                      builder: (context, value, child) {
+                        return Transform.scale(scale: value, child: child);
+                      },
+                      child: messageBubble(message, isMe),
                     ),
                   ),
                 );
@@ -139,30 +151,45 @@ class _ChatState extends State<ChatScreen> {
 
           // INPUT BAR
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            color: Colors.black,
+            margin: const EdgeInsets.all(10),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white10),
+            ),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: controller,
-                    style: TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
                       hintText: "Type a message...",
                       hintStyle: TextStyle(color: Colors.grey),
                       border: InputBorder.none,
                     ),
                   ),
                 ),
-                IconButton(
-                  onPressed: sendMessage,
-                  icon: Icon(Icons.send, color: Colors.blue),
+                GestureDetector(
+                  onTap: sendMessage,
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
+                      ),
+                    ),
+                    child: const Icon(Icons.send, color: Colors.white),
+                  ),
                 )
               ],
             ),
-          )
+          ),
         ],
       ),
+        ),
     );
   }
 }
