@@ -72,6 +72,7 @@ class BluetoothService {
       await Future.delayed(const Duration(milliseconds: 800));
 
       await _discoverServices();
+      await sendHandshake();
 
       return true;
     } catch (e) {
