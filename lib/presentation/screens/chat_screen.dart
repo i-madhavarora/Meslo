@@ -5,7 +5,6 @@ import '../../data/repositories/message_repository.dart';
 import '../../models/user_model.dart';
 import '../../services/ble_manager.dart';
 import '../../services/user_service.dart';
-import '../../services/bluetooth_service.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -18,33 +17,7 @@ class _ChatState extends State<ChatScreen> {
   final repo = MessageRepository();
   final controller = TextEditingController();
   final uuid = const Uuid();
-  final ble = BleManager().service; // IMPORTANT: ideally pass from previous screen later
-
-  Future<void> sendMessage() async {
-    final user = await UserService().getUser();
-    if (user == null) return;
-
-    final text = controller.text.trim();
-    if (text.isEmpty) return;
-
-    // 1. Save locally (Hive)
-    final msg = Message(
-      id: uuid.v4(),
-      text: text,
-      senderId: user.userId,
-      receiverId: ble.remoteDeviceId ?? "unknown",
-      timestamp: DateTime.now(),
-      senderName: user.name,
-    );
-
-    repo.sendMessage(msg);
-
-    // 2. SEND VIA BLE (NEW)
-    await ble.sendChat(text);
-
-    controller.clear();
-    setState(() {});
-  }
+  final ble = BleManager().service;
 
   UserModel? currentUser;
 
@@ -53,7 +26,7 @@ class _ChatState extends State<ChatScreen> {
     super.initState();
     loadUser();
 
-    // Listen for BLE messages
+    // 🔥 BLE MESSAGE LISTENER (FINAL)
     ble.rxCharacteristic?.lastValueStream.listen((value) {
       final msg = String.fromCharCodes(value);
 
@@ -69,16 +42,39 @@ class _ChatState extends State<ChatScreen> {
           id: uuid.v4(),
           text: data,
           senderId: sender,
-          receiverId: "me",
+          receiverId: currentUser?.userId ?? "me",
           timestamp: DateTime.now(),
           senderName: sender,
         );
 
         repo.sendMessage(incoming);
-
-        setState(() {});
       }
     });
+  }
+
+  Future<void> sendMessage() async {
+    final user = await UserService().getUser();
+    if (user == null) return;
+
+    final text = controller.text.trim();
+    if (text.isEmpty) return;
+
+    // 🔹 Save locally (Hive)
+    final msg = Message(
+      id: uuid.v4(),
+      text: text,
+      senderId: user.userId,
+      receiverId: ble.remoteDeviceId ?? "unknown",
+      timestamp: DateTime.now(),
+      senderName: user.name,
+    );
+
+    repo.sendMessage(msg);
+
+    // 🔹 Send via BLE
+    await ble.sendChat(text);
+
+    controller.clear();
   }
 
   void loadUser() async {
@@ -90,7 +86,6 @@ class _ChatState extends State<ChatScreen> {
     final hour = time.hour % 12 == 0 ? 12 : time.hour % 12;
     final minute = time.minute.toString().padLeft(2, '0');
     final period = time.hour >= 12 ? 'PM' : 'AM';
-
     return "$hour:$minute $period";
   }
 
@@ -101,20 +96,18 @@ class _ChatState extends State<ChatScreen> {
       decoration: BoxDecoration(
         gradient: isMe
             ? const LinearGradient(
-                colors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
-              )
+          colors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
+        )
             : LinearGradient(
-                colors: [Colors.grey.shade800, Colors.grey.shade700],
-              ),
+          colors: [Colors.grey.shade800, Colors.grey.shade700],
+        ),
         borderRadius: BorderRadius.only(
           topLeft: const Radius.circular(18),
           topRight: const Radius.circular(18),
-          bottomLeft: isMe
-              ? const Radius.circular(18)
-              : const Radius.circular(0),
-          bottomRight: isMe
-              ? const Radius.circular(0)
-              : const Radius.circular(18),
+          bottomLeft:
+          isMe ? const Radius.circular(18) : const Radius.circular(0),
+          bottomRight:
+          isMe ? const Radius.circular(0) : const Radius.circular(18),
         ),
       ),
       child: Column(
@@ -135,7 +128,8 @@ class _ChatState extends State<ChatScreen> {
             children: [
               Text(
                 formatTime(message.timestamp),
-                style: const TextStyle(fontSize: 10, color: Colors.white70),
+                style:
+                const TextStyle(fontSize: 10, color: Colors.white70),
               ),
               const SizedBox(width: 4),
               if (isMe)
@@ -153,8 +147,6 @@ class _ChatState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final messages = repo.getLocalMessages();
-
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -169,45 +161,48 @@ class _ChatState extends State<ChatScreen> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF0f2027), Color(0xFF203a43), Color(0xFF2c5364)],
+            colors: [
+              Color(0xFF0f2027),
+              Color(0xFF203a43),
+              Color(0xFF2c5364)
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
         ),
         child: Column(
           children: [
+            // 🔥 REAL-TIME CHAT LIST
             Expanded(
-              child: ListView.builder(
-                itemCount: messages.length,
-                itemBuilder: (context, index) {
-                  final message = messages[index];
-                  final isMe = message.senderId == currentUser?.userId;
+              child: StreamBuilder<List<Message>>(
+                stream: repo.messageStream,
+                builder: (context, snapshot) {
+                  final messages = snapshot.data ?? [];
 
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    child: Align(
-                      alignment: isMe
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
-                      child: TweenAnimationBuilder(
-                        tween: Tween<double>(begin: 0.8, end: 1),
-                        duration: const Duration(milliseconds: 200),
-                        builder: (context, value, child) {
-                          return Transform.scale(scale: value, child: child);
-                        },
+                  return ListView.builder(
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messages[index];
+                      final isMe =
+                          message.senderId == currentUser?.userId;
+
+                      return Align(
+                        alignment: isMe
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
                         child: messageBubble(message, isMe),
-                      ),
-                    ),
+                      );
+                    },
                   );
                 },
               ),
             ),
 
-            // INPUT BAR
+            // 🔹 INPUT BAR
             Container(
               margin: const EdgeInsets.all(10),
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(20),
@@ -233,10 +228,14 @@ class _ChatState extends State<ChatScreen> {
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
-                          colors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
+                          colors: [
+                            Color(0xFF4facfe),
+                            Color(0xFF00f2fe)
+                          ],
                         ),
                       ),
-                      child: const Icon(Icons.send, color: Colors.white),
+                      child: const Icon(Icons.send,
+                          color: Colors.white),
                     ),
                   ),
                 ],
