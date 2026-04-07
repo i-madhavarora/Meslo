@@ -5,7 +5,6 @@ import '../../data/repositories/message_repository.dart';
 import '../../models/user_model.dart';
 import '../../services/user_service.dart';
 
-
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -26,8 +25,8 @@ class _ChatState extends State<ChatScreen> {
     final msg = Message(
       id: uuid.v4(),
       text: controller.text,
-      senderId: user.userId,   // ❌ not "me"
-      receiverId: "user",       // (temporary for now)
+      senderId: user.userId, // ❌ not "me"
+      receiverId: "user", // (temporary for now)
       timestamp: DateTime.now(),
       senderName: user.name,
     );
@@ -64,13 +63,21 @@ class _ChatState extends State<ChatScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         gradient: isMe
-            ? const LinearGradient(colors: [Color(0xFF4facfe), Color(0xFF00f2fe)])
-            : LinearGradient(colors: [Colors.grey.shade800, Colors.grey.shade700]),
+            ? const LinearGradient(
+                colors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
+              )
+            : LinearGradient(
+                colors: [Colors.grey.shade800, Colors.grey.shade700],
+              ),
         borderRadius: BorderRadius.only(
           topLeft: const Radius.circular(18),
           topRight: const Radius.circular(18),
-          bottomLeft: isMe ? const Radius.circular(18) : const Radius.circular(0),
-          bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(18),
+          bottomLeft: isMe
+              ? const Radius.circular(18)
+              : const Radius.circular(0),
+          bottomRight: isMe
+              ? const Radius.circular(0)
+              : const Radius.circular(18),
         ),
       ),
       child: Column(
@@ -95,7 +102,11 @@ class _ChatState extends State<ChatScreen> {
               ),
               const SizedBox(width: 4),
               if (isMe)
-                const Icon(Icons.done_all, size: 14, color: Colors.lightBlueAccent),
+                const Icon(
+                  Icons.done_all,
+                  size: 14,
+                  color: Colors.lightBlueAccent,
+                ),
             ],
           ),
         ],
@@ -118,83 +129,85 @@ class _ChatState extends State<ChatScreen> {
         ),
         centerTitle: true,
       ),
-        body: Container(
+      body: Container(
         decoration: const BoxDecoration(
-        gradient: LinearGradient(
-        colors: [Color(0xFF0f2027), Color(0xFF203a43), Color(0xFF2c5364)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        ),
+          gradient: LinearGradient(
+            colors: [Color(0xFF0f2027), Color(0xFF203a43), Color(0xFF2c5364)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
         ),
         child: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final message = messages[index];
-                final isMe = message.senderId == currentUser?.userId;
+          children: [
+            Expanded(
+              child: ListView.builder(
+                itemCount: messages.length,
+                itemBuilder: (context, index) {
+                  final message = messages[index];
+                  final isMe = message.senderId == currentUser?.userId;
 
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  child: Align(
-                    alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                    child: TweenAnimationBuilder(
-                      tween: Tween<double>(begin: 0.8, end: 1),
-                      duration: const Duration(milliseconds: 200),
-                      builder: (context, value, child) {
-                        return Transform.scale(scale: value, child: child);
-                      },
-                      child: messageBubble(message, isMe),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          // INPUT BAR
-          Container(
-            margin: const EdgeInsets.all(10),
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white10),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      hintText: "Type a message...",
-                      hintStyle: TextStyle(color: Colors.grey),
-                      border: InputBorder.none,
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: sendMessage,
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    child: Align(
+                      alignment: isMe
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
+                      child: TweenAnimationBuilder(
+                        tween: Tween<double>(begin: 0.8, end: 1),
+                        duration: const Duration(milliseconds: 200),
+                        builder: (context, value, child) {
+                          return Transform.scale(scale: value, child: child);
+                        },
+                        child: messageBubble(message, isMe),
                       ),
                     ),
-                    child: const Icon(Icons.send, color: Colors.white),
-                  ),
-                )
-              ],
+                  );
+                },
+              ),
             ),
-          ),
-        ],
-      ),
+
+            // INPUT BAR
+            Container(
+              margin: const EdgeInsets.all(10),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: controller,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        hintText: "Type a message...",
+                        hintStyle: TextStyle(color: Colors.grey),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: sendMessage,
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
+                        ),
+                      ),
+                      child: const Icon(Icons.send, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
+      ),
     );
   }
 }
