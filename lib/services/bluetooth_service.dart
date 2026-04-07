@@ -3,17 +3,27 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class BluetoothService {
   final List<ScanResult> results = [];
+
+  BluetoothDevice? connectedDevice;
+  BluetoothCharacteristic? txCharacteristic;
+  BluetoothCharacteristic? rxCharacteristic;
+
   StreamSubscription<List<ScanResult>>? _scanSub;
+  StreamSubscription<BluetoothConnectionState>? _connSub;
 
   bool isScanning = false;
+  bool isConnected = false;
 
+  // ---------------- SCAN ----------------
   Future<void> startScan() async {
     results.clear();
 
     try {
       isScanning = true;
 
-      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 6));
+      await FlutterBluePlus.startScan(
+        timeout: const Duration(seconds: 6),
+      );
 
       _scanSub?.cancel();
 
@@ -22,23 +32,99 @@ class BluetoothService {
           ..clear()
           ..addAll(res);
       });
+
     } catch (e) {
-      print("START SCAN ERROR: $e");
+      print("SCAN ERROR: $e");
     }
   }
 
   Future<void> stopScan() async {
+    await FlutterBluePlus.stopScan();
+    isScanning = false;
+    await _scanSub?.cancel();
+    _scanSub = null;
+  }
+
+  // ---------------- CONNECT ----------------
+  Future<bool> connect(BluetoothDevice device) async {
     try {
-      await FlutterBluePlus.stopScan();
-      isScanning = false;
-      await _scanSub?.cancel();
-      _scanSub = null;
+      connectedDevice = device;
+
+      await device.connect(
+        timeout: const Duration(seconds: 15),
+        autoConnect: false,
+      );
+
+      isConnected = true;
+
+      _connSub = device.connectionState.listen((state) {
+        isConnected = state == BluetoothConnectionState.connected;
+        print("STATE: $state");
+      });
+
+      // 🔥 IMPORTANT: wait a bit before service discovery
+      await Future.delayed(const Duration(milliseconds: 800));
+
+      await _discoverServices();
+
+      return true;
     } catch (e) {
-      print("STOP SCAN ERROR: $e");
+      print("CONNECT ERROR: $e");
+      return false;
     }
   }
 
-  void dispose() {
-    _scanSub?.cancel();
+  // ---------------- DISCOVER SERVICES ----------------
+  Future<void> _discoverServices() async {
+    if (connectedDevice == null) return;
+
+    try {
+      final services = await connectedDevice!.discoverServices();
+
+      for (final service in services) {
+        for (final characteristic in service.characteristics) {
+          final props = characteristic.properties;
+
+          // TX (send)
+          if (props.write || props.writeWithoutResponse) {
+            txCharacteristic = characteristic;
+          }
+
+          // RX (receive)
+          if (props.notify || props.indicate) {
+            rxCharacteristic = characteristic;
+
+            await characteristic.setNotifyValue(true);
+
+            characteristic.lastValueStream.listen((value) {
+              print("RECEIVED: $value");
+            });
+          }
+        }
+      }
+    } catch (e) {
+      print("SERVICE DISCOVERY ERROR: $e");
+    }
+  }
+
+  // ---------------- DISCONNECT ----------------
+  Future<void> disconnect() async {
+    try {
+      await connectedDevice?.disconnect();
+      isConnected = false;
+      connectedDevice = null;
+
+      await _connSub?.cancel();
+      _connSub = null;
+    } catch (e) {
+      print("DISCONNECT ERROR: $e");
+    }
+  }
+
+  // ---------------- SEND MESSAGE ----------------
+  Future<void> sendMessage(String msg) async {
+    if (txCharacteristic == null) return;
+
+    await txCharacteristic!.write(msg.codeUnits);
   }
 }
