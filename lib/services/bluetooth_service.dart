@@ -3,18 +3,17 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class BluetoothService {
   Function(String sender)? onPairRequest;
+
   final List<ScanResult> results = [];
+
   String deviceId = "";
   String? remoteDeviceId;
 
   final List<BluetoothDevice> connectedDevices = [];
   final List<BluetoothCharacteristic> txCharacteristics = [];
   final List<BluetoothCharacteristic> rxCharacteristics = [];
-  BluetoothCharacteristic? txCharacteristic;
-  BluetoothCharacteristic? rxCharacteristic;
 
   StreamSubscription<List<ScanResult>>? _scanSub;
-  StreamSubscription<BluetoothConnectionState>? _connSub;
 
   bool isScanning = false;
   bool isConnected = false;
@@ -29,31 +28,32 @@ class BluetoothService {
 
   final Set<String> seenMessages = {};
 
+  // ---------------- AUTO RECONNECT ----------------
   Future<void> autoReconnect() async {
-    if (connectedDevice != null && !isConnected) {
+    for (var device in connectedDevices) {
       try {
-        await connectedDevice!.connect();
-        await _discoverServices();
+        await device.connect(autoConnect: true);
+        await Future.delayed(const Duration(milliseconds: 500));
+        await _discoverServices(device);
         await sendHandshake();
-      } catch (e) {
-        print("Reconnect failed");
-      }
+      } catch (_) {}
     }
   }
 
+  // ---------------- PAIRING ----------------
   Future<void> sendPairRequest(String targetId) async {
-    await sendMessage("PAIR_REQUEST", targetId);
+    await sendMessage(PAIR_REQUEST, targetId);
   }
 
   Future<void> acceptPair(String targetId) async {
     sessionId = "${deviceId}_$targetId";
     isPaired = true;
 
-    await sendMessage("PAIR_ACCEPT", sessionId!);
+    await sendMessage(PAIR_ACCEPT, sessionId!);
   }
 
   Future<void> sendHandshake() async {
-    await sendMessage("HELLO", "INIT");
+    await sendMessage(HELLO, "INIT");
   }
 
   // ---------------- SCAN ----------------
@@ -74,7 +74,6 @@ class BluetoothService {
           ..clear()
           ..addAll(res);
       });
-
     } catch (e) {
       print("SCAN ERROR: $e");
     }
@@ -95,12 +94,14 @@ class BluetoothService {
         autoConnect: false,
       );
 
-      connectedDevices.add(device);
+      if (!connectedDevices.contains(device)) {
+        connectedDevices.add(device);
+      }
+
+      isConnected = true;
 
       await Future.delayed(const Duration(milliseconds: 800));
-
       await _discoverServices(device);
-
       await sendHandshake();
 
       return true;
@@ -118,23 +119,26 @@ class BluetoothService {
       for (final char in service.characteristics) {
         final props = char.properties;
 
-        if (props.write || props.writeWithoutResponse) {
+        // TX
+        if ((props.write || props.writeWithoutResponse) &&
+            !txCharacteristics.contains(char)) {
           txCharacteristics.add(char);
         }
 
-        if (props.notify || props.indicate) {
+        // RX
+        if ((props.notify || props.indicate) &&
+            !rxCharacteristics.contains(char)) {
           rxCharacteristics.add(char);
 
           await char.setNotifyValue(true);
 
-          char.lastValueStream.listen((value) {
-            _handleIncoming(value);
-          });
+          char.lastValueStream.listen(_handleIncoming);
         }
       }
     }
   }
 
+  // ---------------- RECEIVE ----------------
   void _handleIncoming(List<int> value) {
     final msg = String.fromCharCodes(value);
 
@@ -146,15 +150,36 @@ class BluetoothService {
     final msgId = parts[2];
     final data = parts.sublist(3).join("|");
 
+    // 🚫 duplicate protection
     if (seenMessages.contains(msgId)) return;
     seenMessages.add(msgId);
 
-    print("[$type] from $sender: $data");
+    // ---------------- HANDLE TYPES ----------------
+    switch (type) {
+      case HELLO:
+        remoteDeviceId = sender;
+        break;
 
-    // 🔁 forward to all
+      case PAIR_REQUEST:
+        remoteDeviceId = sender;
+        onPairRequest?.call(sender);
+        break;
+
+      case PAIR_ACCEPT:
+        sessionId = data;
+        isPaired = true;
+        break;
+
+      case CHAT:
+        print("CHAT from $sender: $data");
+        break;
+    }
+
+    // 🔁 MESH FORWARD
     _broadcast(msg);
   }
 
+  // ---------------- BROADCAST ----------------
   Future<void> _broadcast(String msg) async {
     for (var tx in txCharacteristics) {
       try {
@@ -165,27 +190,14 @@ class BluetoothService {
     }
   }
 
+  // ---------------- SEND CHAT ----------------
   Future<void> sendChat(String msg) async {
     if (!isPaired) {
       print("Not paired yet!");
       return;
     }
 
-    await sendMessage("CHAT", msg);
-  }
-
-  // ---------------- DISCONNECT ----------------
-  Future<void> disconnect() async {
-    try {
-      await connectedDevice?.disconnect();
-      isConnected = false;
-      connectedDevice = null;
-
-      await _connSub?.cancel();
-      _connSub = null;
-    } catch (e) {
-      print("DISCONNECT ERROR: $e");
-    }
+    await sendMessage(CHAT, msg);
   }
 
   // ---------------- SEND MESSAGE ----------------
@@ -194,5 +206,23 @@ class BluetoothService {
     final msg = "$type|$deviceId|$msgId|$data";
 
     await _broadcast(msg);
+  }
+
+  // ---------------- DISCONNECT ----------------
+  Future<void> disconnect() async {
+    try {
+      for (var device in connectedDevices) {
+        await device.disconnect();
+      }
+
+      connectedDevices.clear();
+      txCharacteristics.clear();
+      rxCharacteristics.clear();
+
+      isConnected = false;
+      isPaired = false;
+    } catch (e) {
+      print("DISCONNECT ERROR: $e");
+    }
   }
 }
