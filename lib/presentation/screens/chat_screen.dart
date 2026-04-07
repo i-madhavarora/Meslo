@@ -26,31 +26,7 @@ class _ChatState extends State<ChatScreen> {
     super.initState();
     loadUser();
 
-    // 🔥 BLE MESSAGE LISTENER (FINAL)
-    ble.rxCharacteristic?.lastValueStream.listen((value) {
-      final msg = String.fromCharCodes(value);
-
-      final parts = msg.split("|");
-      if (parts.length < 3) return;
-
-      final type = parts[0];
-      final sender = parts[1];
-      final data = parts.sublist(2).join("|");
-
-      if (type == "CHAT") {
-        final incoming = Message(
-          id: uuid.v4(),
-          text: data,
-          senderId: sender,
-          receiverId: currentUser?.userId ?? "me",
-          timestamp: DateTime.now(),
-          senderName: sender,
-        );
-
-        repo.sendMessage(incoming);
-      }
-    });
-
+    // ✅ Pair request UI
     ble.onPairRequest = (sender) {
       showDialog(
         context: context,
@@ -59,9 +35,7 @@ class _ChatState extends State<ChatScreen> {
           content: Text("Connect with $sender ?"),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
+              onPressed: () => Navigator.pop(context),
               child: const Text("Reject"),
             ),
             TextButton(
@@ -75,10 +49,12 @@ class _ChatState extends State<ChatScreen> {
         ),
       );
     };
+
+    // ✅ Auto reconnect loop
     Future.doWhile(() async {
       await Future.delayed(const Duration(seconds: 5));
       await ble.autoReconnect();
-      return true;
+      return mounted;
     });
   }
 
@@ -89,7 +65,6 @@ class _ChatState extends State<ChatScreen> {
     final text = controller.text.trim();
     if (text.isEmpty) return;
 
-    // 🔹 Save locally (Hive)
     final msg = Message(
       id: uuid.v4(),
       text: text,
@@ -99,9 +74,10 @@ class _ChatState extends State<ChatScreen> {
       senderName: user.name,
     );
 
-    repo.sendMessage(msg);
+    // ✅ local + stream update
+    await repo.sendMessage(msg);
 
-    // 🔹 Send via BLE
+    // ✅ BLE send (encrypted internally)
     await ble.sendChat(text);
 
     controller.clear();
@@ -126,20 +102,18 @@ class _ChatState extends State<ChatScreen> {
       decoration: BoxDecoration(
         gradient: isMe
             ? const LinearGradient(
-                colors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
-              )
+          colors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
+        )
             : LinearGradient(
-                colors: [Colors.grey.shade800, Colors.grey.shade700],
-              ),
+          colors: [Colors.grey.shade800, Colors.grey.shade700],
+        ),
         borderRadius: BorderRadius.only(
           topLeft: const Radius.circular(18),
           topRight: const Radius.circular(18),
-          bottomLeft: isMe
-              ? const Radius.circular(18)
-              : const Radius.circular(0),
-          bottomRight: isMe
-              ? const Radius.circular(0)
-              : const Radius.circular(18),
+          bottomLeft:
+          isMe ? const Radius.circular(18) : const Radius.circular(0),
+          bottomRight:
+          isMe ? const Radius.circular(0) : const Radius.circular(18),
         ),
       ),
       child: Column(
@@ -160,7 +134,8 @@ class _ChatState extends State<ChatScreen> {
             children: [
               Text(
                 formatTime(message.timestamp),
-                style: const TextStyle(fontSize: 10, color: Colors.white70),
+                style:
+                const TextStyle(fontSize: 10, color: Colors.white70),
               ),
               const SizedBox(width: 4),
               if (isMe)
@@ -177,14 +152,20 @@ class _ChatState extends State<ChatScreen> {
   }
 
   @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
+        centerTitle: true,
         title: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const Text(
               "EchoMesh",
@@ -198,19 +179,21 @@ class _ChatState extends State<ChatScreen> {
             ),
           ],
         ),
-        centerTitle: true,
       ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF0f2027), Color(0xFF203a43), Color(0xFF2c5364)],
+            colors: [
+              Color(0xFF0f2027),
+              Color(0xFF203a43),
+              Color(0xFF2c5364)
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
         ),
         child: Column(
           children: [
-            // 🔥 REAL-TIME CHAT LIST
             Expanded(
               child: StreamBuilder<List<Message>>(
                 stream: repo.messageStream,
@@ -221,7 +204,8 @@ class _ChatState extends State<ChatScreen> {
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
                       final message = messages[index];
-                      final isMe = message.senderId == currentUser?.userId;
+                      final isMe =
+                          message.senderId == currentUser?.userId;
 
                       return Align(
                         alignment: isMe
@@ -235,10 +219,10 @@ class _ChatState extends State<ChatScreen> {
               ),
             ),
 
-            // 🔹 INPUT BAR
             Container(
               margin: const EdgeInsets.all(10),
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(20),
@@ -264,10 +248,14 @@ class _ChatState extends State<ChatScreen> {
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
-                          colors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
+                          colors: [
+                            Color(0xFF4facfe),
+                            Color(0xFF00f2fe)
+                          ],
                         ),
                       ),
-                      child: const Icon(Icons.send, color: Colors.white),
+                      child: const Icon(Icons.send,
+                          color: Colors.white),
                     ),
                   ),
                 ],

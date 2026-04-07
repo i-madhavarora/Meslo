@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
+import '../core/encryption.dart';
+
 class BluetoothService {
   Function(String sender)? onPairRequest;
 
@@ -171,7 +173,17 @@ class BluetoothService {
         break;
 
       case CHAT:
-        print("CHAT from $sender: $data");
+        String finalMsg = data;
+
+        if (sessionId != null) {
+          try {
+            finalMsg = Encryption.decrypt(data, sessionId!);
+          } catch (_) {
+            print("Decryption failed");
+          }
+        }
+
+        print("CHAT from $sender: $finalMsg");
         break;
     }
 
@@ -201,9 +213,18 @@ class BluetoothService {
   }
 
   // ---------------- SEND MESSAGE ----------------
+
   Future<void> sendMessage(String type, String data) async {
     final msgId = DateTime.now().millisecondsSinceEpoch.toString();
-    final msg = "$type|$deviceId|$msgId|$data";
+
+    String finalData = data;
+
+    // 🔐 encrypt only chat messages
+    if (type == CHAT && sessionId != null) {
+      finalData = Encryption.encrypt(data, sessionId!);
+    }
+
+    final msg = "$type|$deviceId|$msgId|$finalData";
 
     await _broadcast(msg);
   }
