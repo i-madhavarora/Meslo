@@ -14,6 +14,24 @@ void main() async {
   runApp(MyApp(user: user));
 }
 
+Future<void> initForegroundTask() async {
+  FlutterForegroundTask.init(
+    androidNotificationOptions: AndroidNotificationOptions(
+      channelId: 'echomesh_channel',
+      channelName: 'EchoMesh Service',
+      channelDescription: 'Keeps BLE running',
+      channelImportance: NotificationChannelImportance.LOW,
+      priority: NotificationPriority.LOW,
+    ),
+    foregroundTaskOptions: const ForegroundTaskOptions(
+      interval: 5000, // 5 sec loop
+      autoRunOnBoot: false,
+      allowWakeLock: true,
+      allowWifiLock: true,
+    ), iosNotificationOptions: null,
+  );
+}
+
 void startBackgroundService() {
   FlutterForegroundTask.startService(
     notificationTitle: 'Meslo Running',
