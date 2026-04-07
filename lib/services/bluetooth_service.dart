@@ -25,6 +25,8 @@ class BluetoothService {
   static const String PAIR_ACCEPT = "PAIR_ACCEPT";
   static const String CHAT = "CHAT";
 
+  final Set<String> seenMessages = {};
+
   Future<void> autoReconnect() async {
     if (connectedDevice != null && !isConnected) {
       try {
@@ -137,37 +139,26 @@ class BluetoothService {
 
             characteristic.lastValueStream.listen((value) {
               final msg = String.fromCharCodes(value);
-              final parts = msg.split("|");
 
-              if (parts.length < 3) return;
+              final parts = msg.split("|");
+              if (parts.length < 4) return;
 
               final type = parts[0];
               final sender = parts[1];
-              final data = parts.sublist(2).join("|");
+              final msgId = parts[2];
+              final data = parts.sublist(3).join("|");
 
-              switch (type) {
-                case "HELLO":
-                  remoteDeviceId = sender;
-                  print("HELLO from $sender");
-                  break;
+              // 🚫 ignore duplicates
+              if (seenMessages.contains(msgId)) return;
+              seenMessages.add(msgId);
 
-                case "PAIR_REQUEST":
-                  remoteDeviceId = sender;
-                  onPairRequest?.call(sender);
-                  break;
-
-                case "PAIR_ACCEPT":
-                  sessionId = data;
-                  isPaired = true;
-                  print("PAIRED with session: $sessionId");
-                  break;
-
-                case "CHAT":
-                  if (isPaired) {
-                    print("CHAT from $sender: $data");
-                  }
-                  break;
+              // 📥 process message
+              if (type == "CHAT") {
+                print("CHAT from $sender: $data");
               }
+
+              // 🔁 FORWARD TO OTHER DEVICES (MESH MAGIC)
+              _forwardMessage(msg);
             });
           }
         }
@@ -175,6 +166,12 @@ class BluetoothService {
     } catch (e) {
       print("SERVICE DISCOVERY ERROR: $e");
     }
+  }
+
+  Future<void> _forwardMessage(String msg) async {
+    if (txCharacteristic == null) return;
+
+    await txCharacteristic!.write(msg.codeUnits);
   }
 
   Future<void> sendChat(String msg) async {
@@ -204,7 +201,10 @@ class BluetoothService {
   Future<void> sendMessage(String type, String data) async {
     if (txCharacteristic == null) return;
 
-    final msg = "$type|$deviceId|$data";
+    final msgId = DateTime.now().millisecondsSinceEpoch.toString();
+
+    final msg = "$type|$deviceId|$msgId|$data";
+
     await txCharacteristic!.write(msg.codeUnits);
   }
 }
