@@ -152,9 +152,17 @@ class _ChatState extends State<ChatScreen> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
-        title: const Text(
-          "EchoMesh",
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Text("EchoMesh", style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              ble.isConnected
+                  ? "Connected: ${ble.remoteDeviceId ?? 'Device'}"
+                  : "Disconnected",
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
+            ),
+          ],
         ),
         centerTitle: true,
       ),

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class BluetoothService {
+  Function(String sender)? onPairRequest;
   final List<ScanResult> results = [];
   String deviceId = "";
   String? remoteDeviceId;
@@ -140,10 +141,7 @@ class BluetoothService {
 
                 case "PAIR_REQUEST":
                   remoteDeviceId = sender;
-                  print("PAIR REQUEST from $sender");
-
-                  // auto-accept for now (we can add UI later)
-                  acceptPair(sender);
+                  onPairRequest?.call(sender);
                   break;
 
                 case "PAIR_ACCEPT":
