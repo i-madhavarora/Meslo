@@ -5,6 +5,8 @@ import '../../services/user_service.dart';
 import 'chat_screen.dart';
 
 class NameScreen extends StatefulWidget {
+  const NameScreen({super.key});
+
   @override
   State<NameScreen> createState() => _NameScreenState();
 }
@@ -17,7 +19,8 @@ class _NameScreenState extends State<NameScreen> {
     if (nameController.text.isEmpty) return;
 
     final user = UserModel(
-      userId: DateTime.now().millisecondsSinceEpoch.toString() +
+      userId:
+          DateTime.now().millisecondsSinceEpoch.toString() +
           Random().nextInt(9999).toString(),
       name: nameController.text,
       username: usernameController.text.isEmpty
@@ -71,10 +74,7 @@ class _NameScreenState extends State<NameScreen> {
                 ),
               ),
               SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: createUser,
-                child: Text("Continue"),
-              ),
+              ElevatedButton(onPressed: createUser, child: Text("Continue")),
             ],
           ),
         ),
