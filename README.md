@@ -1,4 +1,4 @@
-# Meslo
+# Meslo 🔥
 
-## EchoMesh Offline-First Messaging App
+## => EchoMesh Offline-First Messaging App 📲
 
