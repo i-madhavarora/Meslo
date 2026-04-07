@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class BluetoothService {
-  List<ScanResult> results = [];
+  final List<ScanResult> results = [];
+  StreamSubscription<List<ScanResult>>? _scanSub;
+
   bool isScanning = false;
 
   Future<void> startScan() async {
@@ -10,18 +13,17 @@ class BluetoothService {
     try {
       isScanning = true;
 
-      await FlutterBluePlus.startScan(
-        timeout: const Duration(seconds: 5),
-      );
+      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 6));
 
-      FlutterBluePlus.scanResults.listen((res) {
-        results = res;
+      _scanSub?.cancel();
+
+      _scanSub = FlutterBluePlus.scanResults.listen((res) {
+        results
+          ..clear()
+          ..addAll(res);
       });
-
     } catch (e) {
-      print("Scan error: $e");
-    } finally {
-      isScanning = false;
+      print("START SCAN ERROR: $e");
     }
   }
 
@@ -29,8 +31,14 @@ class BluetoothService {
     try {
       await FlutterBluePlus.stopScan();
       isScanning = false;
+      await _scanSub?.cancel();
+      _scanSub = null;
     } catch (e) {
-      print("Stop scan error: $e");
+      print("STOP SCAN ERROR: $e");
     }
+  }
+
+  void dispose() {
+    _scanSub?.cancel();
   }
 }
