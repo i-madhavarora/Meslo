@@ -54,30 +54,33 @@ class _ChatState extends State<ChatScreen> {
     ble.onPairRequest = (sender) {
       showDialog(
         context: context,
-        builder: (_) =>
-            AlertDialog(
-              title: const Text("Pair Request"),
-              content: Text("Connect with $sender ?"),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: const Text("Reject"),
-                ),
-                TextButton(
-                  onPressed: () {
-                    ble.acceptPair(sender);
-                    Navigator.pop(context);
-                  },
-                  child: const Text("Accept"),
-                ),
-              ],
+        builder: (_) => AlertDialog(
+          title: const Text("Pair Request"),
+          content: Text("Connect with $sender ?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text("Reject"),
             ),
+            TextButton(
+              onPressed: () {
+                ble.acceptPair(sender);
+                Navigator.pop(context);
+              },
+              child: const Text("Accept"),
+            ),
+          ],
+        ),
       );
     };
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 5));
+      await ble.autoReconnect();
+      return true;
+    });
   }
-
 
   Future<void> sendMessage() async {
     final user = await UserService().getUser();
@@ -123,18 +126,20 @@ class _ChatState extends State<ChatScreen> {
       decoration: BoxDecoration(
         gradient: isMe
             ? const LinearGradient(
-          colors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
-        )
+                colors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
+              )
             : LinearGradient(
-          colors: [Colors.grey.shade800, Colors.grey.shade700],
-        ),
+                colors: [Colors.grey.shade800, Colors.grey.shade700],
+              ),
         borderRadius: BorderRadius.only(
           topLeft: const Radius.circular(18),
           topRight: const Radius.circular(18),
-          bottomLeft:
-          isMe ? const Radius.circular(18) : const Radius.circular(0),
-          bottomRight:
-          isMe ? const Radius.circular(0) : const Radius.circular(18),
+          bottomLeft: isMe
+              ? const Radius.circular(18)
+              : const Radius.circular(0),
+          bottomRight: isMe
+              ? const Radius.circular(0)
+              : const Radius.circular(18),
         ),
       ),
       child: Column(
@@ -155,8 +160,7 @@ class _ChatState extends State<ChatScreen> {
             children: [
               Text(
                 formatTime(message.timestamp),
-                style:
-                const TextStyle(fontSize: 10, color: Colors.white70),
+                style: const TextStyle(fontSize: 10, color: Colors.white70),
               ),
               const SizedBox(width: 4),
               if (isMe)
@@ -182,7 +186,10 @@ class _ChatState extends State<ChatScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Text("EchoMesh", style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              "EchoMesh",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             Text(
               ble.isConnected
                   ? "Connected: ${ble.remoteDeviceId ?? 'Device'}"
@@ -196,11 +203,7 @@ class _ChatState extends State<ChatScreen> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFF0f2027),
-              Color(0xFF203a43),
-              Color(0xFF2c5364)
-            ],
+            colors: [Color(0xFF0f2027), Color(0xFF203a43), Color(0xFF2c5364)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -218,8 +221,7 @@ class _ChatState extends State<ChatScreen> {
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
                       final message = messages[index];
-                      final isMe =
-                          message.senderId == currentUser?.userId;
+                      final isMe = message.senderId == currentUser?.userId;
 
                       return Align(
                         alignment: isMe
@@ -236,8 +238,7 @@ class _ChatState extends State<ChatScreen> {
             // 🔹 INPUT BAR
             Container(
               margin: const EdgeInsets.all(10),
-              padding:
-              const EdgeInsets.symmetric(horizontal: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(20),
@@ -263,14 +264,10 @@ class _ChatState extends State<ChatScreen> {
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
-                          colors: [
-                            Color(0xFF4facfe),
-                            Color(0xFF00f2fe)
-                          ],
+                          colors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
                         ),
                       ),
-                      child: const Icon(Icons.send,
-                          color: Colors.white),
+                      child: const Icon(Icons.send, color: Colors.white),
                     ),
                   ),
                 ],
