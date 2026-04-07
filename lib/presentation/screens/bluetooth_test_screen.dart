@@ -13,9 +13,21 @@ class _BluetoothTestScreenState extends State<BluetoothTestScreen> {
   final service = BluetoothService();
 
   @override
+  void initState() {
+    super.initState();
+
+    // Auto refresh UI every 500ms while scanning
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) setState(() {});
+      return service.isScanning;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Bluetooth Test")),
+      appBar: AppBar(title: const Text("EchoMesh Bluetooth")),
       body: Column(
         children: [
           Row(
@@ -23,8 +35,10 @@ class _BluetoothTestScreenState extends State<BluetoothTestScreen> {
               ElevatedButton(
                 onPressed: () async {
                   final ok = await PermissionService.request();
-                  if (ok) await service.startScan();
-                  setState(() {});
+                  if (ok) {
+                    await service.startScan();
+                    setState(() {});
+                  }
                 },
                 child: const Text("Start Scan"),
               ),
@@ -37,18 +51,25 @@ class _BluetoothTestScreenState extends State<BluetoothTestScreen> {
               ),
             ],
           ),
+
+          const SizedBox(height: 10),
+
           Expanded(
             child: ListView.builder(
               itemCount: service.results.length,
               itemBuilder: (context, i) {
                 final r = service.results[i];
                 return ListTile(
-                  title: Text(r.device.platformName),
+                  title: Text(
+                    r.device.platformName.isEmpty
+                        ? "Unknown Device"
+                        : r.device.platformName,
+                  ),
                   subtitle: Text(r.device.remoteId.toString()),
                 );
               },
             ),
-          )
+          ),
         ],
       ),
     );
