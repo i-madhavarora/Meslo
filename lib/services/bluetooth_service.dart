@@ -1,8 +1,5 @@
 import 'dart:async';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'dart:convert';
-import '../models/identity_packet.dart';
-import '../services/device_registry.dart';
 import '../core/encryption.dart';
 
 class BluetoothService {
