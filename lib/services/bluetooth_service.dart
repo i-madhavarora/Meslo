@@ -7,7 +7,9 @@ class BluetoothService {
   String deviceId = "";
   String? remoteDeviceId;
 
-  BluetoothDevice? connectedDevice;
+  final List<BluetoothDevice> connectedDevices = [];
+  final List<BluetoothCharacteristic> txCharacteristics = [];
+  final List<BluetoothCharacteristic> rxCharacteristics = [];
   BluetoothCharacteristic? txCharacteristic;
   BluetoothCharacteristic? rxCharacteristic;
 
@@ -88,24 +90,17 @@ class BluetoothService {
   // ---------------- CONNECT ----------------
   Future<bool> connect(BluetoothDevice device) async {
     try {
-      connectedDevice = device;
-
       await device.connect(
-        timeout: const Duration(seconds: 15),
+        timeout: const Duration(seconds: 10),
         autoConnect: false,
       );
 
-      isConnected = true;
+      connectedDevices.add(device);
 
-      _connSub = device.connectionState.listen((state) {
-        isConnected = state == BluetoothConnectionState.connected;
-        print("STATE: $state");
-      });
-
-      // 🔥 IMPORTANT: wait a bit before service discovery
       await Future.delayed(const Duration(milliseconds: 800));
 
-      await _discoverServices();
+      await _discoverServices(device);
+
       await sendHandshake();
 
       return true;
@@ -116,62 +111,58 @@ class BluetoothService {
   }
 
   // ---------------- DISCOVER SERVICES ----------------
-  Future<void> _discoverServices() async {
-    if (connectedDevice == null) return;
+  Future<void> _discoverServices(BluetoothDevice device) async {
+    final services = await device.discoverServices();
 
-    try {
-      final services = await connectedDevice!.discoverServices();
+    for (final service in services) {
+      for (final char in service.characteristics) {
+        final props = char.properties;
 
-      for (final service in services) {
-        for (final characteristic in service.characteristics) {
-          final props = characteristic.properties;
+        if (props.write || props.writeWithoutResponse) {
+          txCharacteristics.add(char);
+        }
 
-          // TX (send)
-          if (props.write || props.writeWithoutResponse) {
-            txCharacteristic = characteristic;
-          }
+        if (props.notify || props.indicate) {
+          rxCharacteristics.add(char);
 
-          // RX (receive)
-          if (props.notify || props.indicate) {
-            rxCharacteristic = characteristic;
+          await char.setNotifyValue(true);
 
-            await characteristic.setNotifyValue(true);
-
-            characteristic.lastValueStream.listen((value) {
-              final msg = String.fromCharCodes(value);
-
-              final parts = msg.split("|");
-              if (parts.length < 4) return;
-
-              final type = parts[0];
-              final sender = parts[1];
-              final msgId = parts[2];
-              final data = parts.sublist(3).join("|");
-
-              // 🚫 ignore duplicates
-              if (seenMessages.contains(msgId)) return;
-              seenMessages.add(msgId);
-
-              // 📥 process message
-              if (type == "CHAT") {
-                print("CHAT from $sender: $data");
-              }
-
-              // 🔁 FORWARD TO OTHER DEVICES (MESH MAGIC)
-              _forwardMessage(msg);
-            });
-          }
+          char.lastValueStream.listen((value) {
+            _handleIncoming(value);
+          });
         }
       }
-    } catch (e) {
-      print("SERVICE DISCOVERY ERROR: $e");
     }
   }
 
-  Future<void> _forwardMessage(String msg) async {
-    if (txCharacteristic == null) return;
+  void _handleIncoming(List<int> value) {
+    final msg = String.fromCharCodes(value);
 
-    await txCharacteristic!.write(msg.codeUnits);
+    final parts = msg.split("|");
+    if (parts.length < 4) return;
+
+    final type = parts[0];
+    final sender = parts[1];
+    final msgId = parts[2];
+    final data = parts.sublist(3).join("|");
+
+    if (seenMessages.contains(msgId)) return;
+    seenMessages.add(msgId);
+
+    print("[$type] from $sender: $data");
+
+    // 🔁 forward to all
+    _broadcast(msg);
+  }
+
+  Future<void> _broadcast(String msg) async {
+    for (var tx in txCharacteristics) {
+      try {
+        await tx.write(msg.codeUnits);
+      } catch (e) {
+        print("Broadcast error: $e");
+      }
+    }
   }
 
   Future<void> sendChat(String msg) async {
@@ -199,12 +190,9 @@ class BluetoothService {
 
   // ---------------- SEND MESSAGE ----------------
   Future<void> sendMessage(String type, String data) async {
-    if (txCharacteristic == null) return;
-
     final msgId = DateTime.now().millisecondsSinceEpoch.toString();
-
     final msg = "$type|$deviceId|$msgId|$data";
 
-    await txCharacteristic!.write(msg.codeUnits);
+    await _broadcast(msg);
   }
 }
